@@ -19,9 +19,15 @@ question();
 
 rl.on('line', (input) => {
   if (input === 'exit') {
+    console.log('Goodbye!');
     rl.close();
   } else {
     writeStream.write(input);
     question();
   }
+});
+
+rl.on('SIGINT', () => {
+  console.log('Goodbye!');
+  rl.close();
 });
