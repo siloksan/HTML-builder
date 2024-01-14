@@ -15,7 +15,6 @@
   "homepage": "https://github.com/EvgeniiMal/html-builder-black#readme",
   "devDependencies": {
     "@types/node": "^18.16.6",
-    "colors": "^1.4.0",
     "eslint": "^8.40.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.0.1",
