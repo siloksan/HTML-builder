@@ -1,40 +1,78 @@
-const { readdir, unlink } = require('fs/promises');
-const { createReadStream, createWriteStream, stat, mkdir } = require('fs');
+const { readdir } = require('fs/promises');
+const {
+  createReadStream,
+  createWriteStream,
+  mkdir,
+  copyFile,
+  stat,
+  unlink,
+  rmdir,
+  access,
+  constants,
+} = require('fs');
 const path = require('path');
 
 const pathToIndexHtml = path.join(__dirname, 'template.html');
 const pathToComponents = path.join(__dirname, 'components');
-const build = path.join(__dirname, 'project-dist');
-const buildHtml = path.join(build, 'index.html');
+const pathToStyles = path.join(__dirname, 'styles');
+const pathToBuild = path.join(__dirname, 'project-dist');
+const pathToBuildAssets = path.join(pathToBuild, 'assets');
+const pathToAssets = path.join(__dirname, 'assets');
+const buildHtml = path.join(pathToBuild, 'index.html');
+const buildCss = path.join(pathToBuild, 'style.css');
 
-stat(build, (err, stats) => {
-  if (err) {
+// ------Создаём структуру папок билда-------
+(async () => {
+  mkdir(pathToBuild, { recursive: true }, (err) => {
+    if (err) console.log(err);
     return;
-  } else {
-    if (stats.isDirectory()) {
-      readdir(build, { withFileTypes: true }, (err, files) => {
-        if (err) {
-          console.log(err);
-        } else {
-          if (files.length === 0) return;
-          files.forEach((file) => {
-            const pathToFile = path.join(build, file.name);
-            unlink(pathToFile, (err) => {
-              if (err) console.log(err);
-            });
+  });
+  mkdir(pathToBuildAssets, { recursive: true }, (err) => {
+    if (err) console.log(err);
+    return;
+  });
+  const assets = await readdir(pathToAssets, { withFileTypes: true });
+  for (const asset of assets) {
+    const pathToAsset = path.join(pathToBuildAssets, asset.name);
+    mkdir(pathToAsset, { recursive: true }, (err) => {
+      if (err) console.log(err);
+      return;
+    });
+  }
+})();
+
+// ---------------Удаляем все файлы в билде-----------
+
+async function deleteFilesIntoDirectory(pathToFolder) {
+  try {
+    const subjects = await readdir(pathToFolder, { withFileTypes: true });
+    if (subjects.length === 0) return;
+    for (const subject of subjects) {
+      const pathToSubject = path.join(pathToFolder, subject.name);
+      stat(pathToSubject, (err, stats) => {
+        if (err) return;
+        else if (!stats.isDirectory()) {
+          unlink(pathToSubject, (err) => {
+            if (err) console.log('удаление не удалось', err);
           });
         }
       });
     }
+  } catch (error) {
+    console.log('Folder is not deleted: ', pathToFolder, error);
   }
-});
+}
 
-mkdir(build, { recursive: true }, (err) => {
-  if (err) console.log(err);
-  return;
-});
+(async () => {
+  deleteFilesIntoDirectory(pathToBuild);
+  const folders = await readdir(pathToBuildAssets, { withFileTypes: true });
+  for (const folder of folders) {
+    const pathToFolder = path.join(pathToBuildAssets, folder.name);
+    deleteFilesIntoDirectory(pathToFolder);
+  }
+})();
 
-// ----------------------------------------------
+//=============Создаём разметку==============================
 
 const COMPONENTS = {};
 
@@ -61,9 +99,112 @@ const COMPONENTS = {};
     const writeStream = createWriteStream(buildHtml);
     writeStream.write(newMarkup);
   } catch (err) {
-    console.error(err);
+    console.error('The markup could not be created:', err);
   }
 })();
+// ----------Собираем стили------------------
+(async () => {
+  const styles = await readdir(pathToStyles, { withFileTypes: true });
+  let content = '';
+  for (const style of styles) {
+    const extension = path.extname(style.name);
+    if (extension !== '.css') return;
+    const pathToStyle = path.join(pathToStyles, style.name);
+    const readableStream = createReadStream(pathToStyle, 'utf-8');
+    for await (const chunk of readableStream) {
+      content += chunk;
+    }
+  }
+  const writeStream = createWriteStream(buildCss);
+  writeStream.write(content);
+})();
+// -----------------------------------------
+// function folderExist(directoryPath) {
+//   return access(directoryPath, constants.F_OK, (err) => {
+//     if (err) {
+//       return;
+//     } else {
+//       return true;
+//     }
+//   });
+// }
+// ---------------------------------------------
+// folderExist(pathToAssets);
+// console.log('folderExist(pathToAssets): ', folderExist(pathToAssets));
+
+// stat(pathToBuild, (err, stats) => {
+//   if (err) {
+//     return;
+//   } else {
+//     if (stats.isDirectory()) {
+//       readdir(pathToBuild, { withFileTypes: true }, (err, files) => {
+//         if (err) {
+//           console.log(err);
+//         } else {
+//           if (files.length === 0) return;
+//           files.forEach((file) => {
+//             const pathToFile = path.join(pathToBuild, file.name);
+//             unlink(pathToFile, (err) => {
+//               if (err) console.log(err);
+//             });
+//           });
+//         }
+//       });
+//     }
+//   }
+// });
+
+// async function deleteFilesIntoDirectory(pathToFolder) {
+//   const subjects = await readdir(pathToFolder, { withFileTypes: true });
+//   if (subjects.length === 0) {
+//     rmdir(pathToFolder, (err) => {
+//       if (err) throw err;
+//       console.log('Папка успешно удалена');
+//     });
+//     return;
+//   } else {
+//     for (const subject of subjects) {
+//       const pathToSubject = path.join(pathToFolder, subject.name);
+//       stat(pathToSubject, (err, stats) => {
+//         if (err) return;
+//         else if (stats.isDirectory()) {
+//           deleteFilesIntoDirectory(pathToSubject);
+//         } else {
+//           unlink(pathToSubject, (err) => {
+//             if (err) console.log('удаление не удалось', err);
+//           });
+//         }
+//       });
+//     }
+//   }
+// }
+
+// =============================================================
+// const ASSETS = {};
+
+// async function getStructureFolder(pathToFolder) {
+//   stat(pathToFolder, (err, stats) => {
+//     if (err) return;
+//     if (stats.isDirectory()) {
+//       const files = await readdir
+//     }
+//   });
+// }
+
+// (async () => {
+//   try {
+//     const folders = await readdir(pathToAssets, { withFileTypes: true });
+//     for (const folder of folders) {
+//       const pathToFile = path.join(pathToAssets, file.name);
+//       const pathToCopyFile = path.join(pathToBuild, file.name);
+//       copyFile(pathToFile, pathToCopyFile, (err) => {
+//         if (err) console.log(`The ${file} could not be copied: `, err);
+//       });
+//     }
+//   } catch (err) {
+//     console.error('The files could not be copied: ', err);
+//   }
+// })();
 
 // ----------------------------------------------
 
