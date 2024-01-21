@@ -1,8 +1,8 @@
 const { readdir, copyFile, mkdir, stat, unlink } = require('fs');
 const path = require('path');
 
-const pathToFolder = path.join('04-copy-directory', 'files');
-const pathToCopyFolder = path.join('04-copy-directory', 'files-copy');
+const pathToFolder = path.join(__dirname, 'files');
+const pathToCopyFolder = path.join(__dirname, 'files-copy');
 
 stat(pathToCopyFolder, (err, stats) => {
   if (err) {

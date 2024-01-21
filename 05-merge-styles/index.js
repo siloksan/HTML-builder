@@ -1,8 +1,8 @@
 const { createReadStream, createWriteStream, readdir } = require('fs');
 const path = require('path');
 
-const pathToCssFolder = path.join('05-merge-styles', 'styles');
-const bundle = path.join('05-merge-styles', 'project-dist', 'bundle.css');
+const pathToCssFolder = path.join(__dirname, 'styles');
+const bundle = path.join(__dirname, 'project-dist', 'bundle.css');
 const writeStream = createWriteStream(bundle);
 
 readdir(pathToCssFolder, { withFileTypes: true }, (err, files) => {
